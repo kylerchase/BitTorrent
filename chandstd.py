@@ -74,6 +74,11 @@ class chandStd(Peer):
                 r = Request(self.id, peer.id, piece_id, start_block)
                 requests.append(r)
 
+        if self.id == "chandStd0":
+            print history.downloads
+            print len(requests)
+            print requests
+
         return requests
 
     def uploads(self, requests, peers, history):
@@ -106,13 +111,15 @@ class chandStd(Peer):
 
             # find the download bandwidth provided over the last two rounds by each peer requesting upload
             recent_downloads = {}
-            for request in requests:
-                if round == 1:
-                    recent_downloads[request.requester_id] = history.downloads[request.requester_id][0]
-                elif round >= 2:
-                    recent_downloads[request.requester_id] = history.downloads[request.requester_id][round-1] + history.downloads[request.requester_id][round-2]
-                else:
-                    recent_downloads[request.requester_id] = 0
+            for peer in peers:
+                recent_downloads[peer.id] = 0
+
+            if round >= 1:
+                for d in history.downloads[round-1]:
+                    recent_downloads[d.from_id] = recent_downloads[d.from_id] + d.blocks
+            elif round >= 2:
+                for d in history.downloads[round-2]:
+                    recent_downloads[d.from_id] = recent_downloads[d.from_id] + d.blocks
 
             # sort requests by recent download bandwidth provided
             requests.sort(key=lambda request: -1*recent_downloads[request.requester_id])
