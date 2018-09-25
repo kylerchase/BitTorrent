@@ -60,6 +60,7 @@ class chandStd(Peer):
         # Sort peers by id.  This is probably not a useful sort, but other 
         # sorts might be useful
         peers.sort(key=lambda p: p.id)
+        random.shuffle(peers)
         # request all available pieces from all peers!
         # (up to self.max_requests from each)
         for peer in peers:
@@ -68,16 +69,32 @@ class chandStd(Peer):
             ###n = min(self.max_requests, len(isect))
             n = len(isect)
             available = list(isect)
+            random.shuffle(available)
             available.sort(key=lambda p: piece_count[p])
-            for piece_id in available:
-                start_block = self.pieces[piece_id]
-                r = Request(self.id, peer.id, piece_id, start_block)
-                requests.append(r)
+            available2 = []
+            inside = []
+            i = 0
+            if n > 0:
+                v = piece_count[available[0]]
+            while i < len(available):
+                inside = []
+                v = piece_count[available[i]]
+                while i < len(available) and v == piece_count[available[i]]:
+                    inside.append(available[i])
+                    i += 1
+                random.shuffle(inside)
+                available2.append(inside)
+
+            for s in available2:
+                for piece_id in s:
+                    start_block = self.pieces[piece_id]
+                    r = Request(self.id, peer.id, piece_id, start_block)
+                    requests.append(r)
 
         if self.id == "chandStd0":
-            print history.downloads
-            print len(requests)
-            print requests
+            print piece_count
+
+     
 
         return requests
 
@@ -133,6 +150,7 @@ class chandStd(Peer):
             if len(requests) > 3:
                 optimistic_unchoke = random.choice(requests[3:])
                 chosen.append(optimistic_unchoke)
+
 
             # Evenly "split" my upload bandwidth among the one chosen requester
             bws = even_split(self.up_bw, len(chosen))
