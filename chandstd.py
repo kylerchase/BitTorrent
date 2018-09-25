@@ -91,8 +91,6 @@ class chandStd(Peer):
                     r = Request(self.id, peer.id, piece_id, start_block)
                     requests.append(r)
 
-        if self.id == "chandStd0":
-            print piece_count
 
      
 
@@ -139,16 +137,30 @@ class chandStd(Peer):
                     recent_downloads[d.from_id] = recent_downloads[d.from_id] + d.blocks
 
             # sort requests by recent download bandwidth provided
-            requests.sort(key=lambda request: -1*recent_downloads[request.requester_id])
+            requests_by_peer = {}
+            for r in requests:
+                if r.requester_id in requests_by_peer.keys():
+                    requests_by_peer[r.requester_id].append(r)
+                else:
+                    requests_by_peer[r.requester_id] = [r]
+
+            requesters = requests_by_peer.keys()
+            requesters.sort(key=lambda peer: -1*recent_downloads[peer])
+
+            bandwidth_per_peer = self.up_bw/min(4, requesters)
+
+            
 
             # choose up to top 3 requesters for unchoking
             chosen = []
-            for i in range(min(3, len(requests))):
-                chosen.append(requests[i].requester_id)
+            for i in range(min(3, len(requesters))):
+                chosen.append(requesters[i])
+
+
 
             # if more than 3 requests, optimistically unchoke another peer
-            if len(requests) > 3:
-                optimistic_unchoke = random.choice(requests[3:])
+            if len(requesters) > 3:
+                optimistic_unchoke = random.choice(requesters[3:])
                 chosen.append(optimistic_unchoke)
 
 
