@@ -16,8 +16,9 @@ from peer import Peer
 class chandStd(Peer):
     def post_init(self):
         print "post_init(): %s here!" % self.id
-        self.dummy_state = dict()
-        self.dummy_state["cake"] = "lie"
+        self.std_state = dict()
+        self.std_state["cycle"] = 0
+        self.std_state["optimistic"] = None
     
     def requests(self, peers, history):
         """
@@ -121,8 +122,7 @@ class chandStd(Peer):
             bws = []
         else:
             logging.debug("Still here: uploading to a random peer and up to top 3 from previous 2 rounds")
-            # change my internal state for no reason
-            self.dummy_state["cake"] = "pie"
+            
 
             # find the download bandwidth provided over the last two rounds by each peer requesting upload
             recent_downloads = {}
@@ -146,9 +146,6 @@ class chandStd(Peer):
 
             requesters = requests_by_peer.keys()
             requesters.sort(key=lambda peer: -1*recent_downloads[peer])
-
-            bandwidth_per_peer = self.up_bw/min(4, requesters)
-
             
 
             # choose up to top 3 requesters for unchoking
@@ -156,12 +153,17 @@ class chandStd(Peer):
             for i in range(min(3, len(requesters))):
                 chosen.append(requesters[i])
 
-
-
-            # if more than 3 requests, optimistically unchoke another peer
+            # continue to unchoke the optimistic unchoke selection for the 3 rounds, or select a new requester to optimistically unchoke
             if len(requesters) > 3:
-                optimistic_unchoke = random.choice(requesters[3:])
+                if self.std_state["cycle"] >= 2 or self.std_state["optimistic"] == None or self.std_state["optimistic"] in requesters[:3]:
+                    optimistic_unchoke = random.choice(requesters[3:])
+                    self.std_state["cycle"] = 0
+                    self.std_state["optimistic"] = optimistic_unchoke
+                else:
+                    optimistic_unchoke = self.std_state["optimistic"]
+                    self.std_state["cycle"] += 1
                 chosen.append(optimistic_unchoke)
+
 
 
             # Evenly "split" my upload bandwidth among the one chosen requester
