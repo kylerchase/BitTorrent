@@ -116,6 +116,9 @@ class chandStd(Peer):
         # has a list of Download objects for each Download to this peer in
         # the previous round.
 
+        # if self.id == "chandStd0" and round>0:
+        #     print history.uploads[round-1]
+
         if len(requests) == 0:
             logging.debug("No one wants my pieces!")
             chosen = []
