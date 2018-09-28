@@ -9,6 +9,7 @@
 import random
 import logging
 
+from math import floor
 from messages import Upload, Request
 from util import even_split
 from peer import Peer
@@ -20,7 +21,7 @@ class chandTourney(Peer):
         self.tyrant_state["cycle"] = 0
         self.gamma = 0.1
         self.alpha = 0.2
-        self.slots = 4
+        self.slots = 10
         self.r = 3
         self.f_ji = dict()
         self.tao = dict()
@@ -114,6 +115,17 @@ class chandTourney(Peer):
 
         In each round, this will be called after requests().
         """
+        print(self.slots)
+        # drop banana peel after we win the mario kart race
+        # in other words, stop uploading to anyone when we've finished all our pieces
+        banana_peel = True
+        for block_count in self.pieces:
+            if block_count != self.conf.blocks_per_piece:
+                banana_peel = False
+                break
+
+        if banana_peel:
+            return []
 
 
         round = history.current_round()
@@ -199,16 +211,42 @@ class chandTourney(Peer):
             chosen = []
             bws = []
 
+            # # based on number of slots, subdivide bandwidth other than reserved optimistic
+            # # unchoking slot based on the f_ji/tao_j ratio proportions
+            remaining_bw = int(self.up_bw - ((1.0/self.slots) * self.up_bw)) - 1
+            # remaining_slots = self.slots - 1
+            #
+            # try:
+            #     request_subset = requesters[:remaining_slots]
+            # except:
+            #     request_subset = requesters
+            #
+            # logging.info(request_subset)
+            #
+            # ratios = [self.f_ji[r]/self.tao[r] for r in request_subset]
+            # logging.info(ratios)
+            # normalizing_denominator = sum(ratios)
+            #
+            # # the bots requesting from us have recorded ratios
+            # if normalizing_denominator:
+            #     for requester, ratio in zip(request_subset, ratios):
+            #         chosen.append(requester)
+            #         bws.append(float(ratio/normalizing_denominator) * remaining_bw)
+            # else:
+            #     normalizing_denominator = sum([bw_requested[requester] for requester in request_subset])
+            #     for requester in request_subset:
+            #         chosen.append(requester)
+            #         bws.append(float(bw_requested[requester] / normalizing_denominator) * remaining_bw)
+
             # allocate all available bandwidth in order of descending ROI
             # allocate less than tao if they have requested less than tao
             # give remaining bandwidth to whoever is next in line
-            remaining_bw = self.up_bw - 1 # had to make 1 less than total because it was giving an error otherwise
+            # remaining_bw = self.up_bw - 1 # had to make 1 less than total because it was giving an error otherwise
             j = 0
             while remaining_bw > 0 and j < len(requesters):
                 to_allocate = min(self.tao[requesters[j]], bw_requested[requesters[j]], remaining_bw)
 
                 # allocate some percentage of the remaining bandwidth
-
 
                 # if to_allocate > remaining_bw:
                 #     remaining_bw = 0
@@ -218,12 +256,44 @@ class chandTourney(Peer):
                     remaining_bw -= to_allocate
                     j += 1
 
+            # selective unchoking: find our bot to unchoke
+            # constraints:
+            # is the bot with the most pieces we actually still care about that is actually requesting from us
+            peer_id_to_peer = {}
+            for peer in peers:
+                peer_id_to_peer[peer.id] = peer
+
+            needed = lambda i: self.pieces[i] < self.conf.blocks_per_piece
+            needed_pieces = filter(needed, range(len(self.pieces)))
+            np_set = set(needed_pieces)
+
+            peer_id_to_interested_set_len = {}
+            for peer in peers:
+                av_set = set(peer.available_pieces)
+                isect = av_set.intersection(np_set)
+                peer_id_to_interested_set_len[peer.id] = len(isect)
+
+            unchoking_selection = None
+            max_interested_set = float("-inf")
+            chosen_set = set(chosen)
+            for requester in requesters:
+                if requester in chosen_set:
+                    continue
+                curr_val = peer_id_to_interested_set_len[requester]
+                if curr_val > max_interested_set:
+                    max_interested_set = curr_val
+                    unchoking_selection = requester
+
+            chosen.append(unchoking_selection)
+            bws.append(floor(self.up_bw * (1.0 / self.slots)))
+
             # optimism = 0.25
             # bws = map(lambda a: int((1-optimism)*a), bws)
             # print len(requesters), len(chosen)
             # chosen.append(random.choice(requesters))
             # bws.append(int(optimism*self.up_bw))
 
+        print(zip(chosen, bws))
         logging.info("Bandwidth available:")
         logging.info(self.up_bw)
         logging.info("Bandwidth used:")
