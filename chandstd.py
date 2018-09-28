@@ -158,7 +158,7 @@ class chandStd(Peer):
 
             # continue to unchoke the optimistic unchoke selection for the 3 rounds, or select a new requester to optimistically unchoke
             if len(requesters) > 3:
-                if self.std_state["cycle"] >= 2 or self.std_state["optimistic"] == None or self.std_state["optimistic"] in requesters[:3]:
+                if self.std_state["cycle"] >= 2 or self.std_state["optimistic"] == None or self.std_state["optimistic"] not in requesters[:3]:
                     optimistic_unchoke = random.choice(requesters[3:])
                     self.std_state["cycle"] = 0
                     self.std_state["optimistic"] = optimistic_unchoke
@@ -166,6 +166,8 @@ class chandStd(Peer):
                     optimistic_unchoke = self.std_state["optimistic"]
                     self.std_state["cycle"] += 1
                 chosen.append(optimistic_unchoke)
+            else:
+                self.std_state["optimistic"] = None
 
 
 
