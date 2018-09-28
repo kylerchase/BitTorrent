@@ -133,7 +133,7 @@ class chandPropShare(Peer):
 
             for d in history.downloads[round-1]:
                 received_last[d.from_id] += d.blocks
-                uploaded[d.from_id] = True 
+                uploaded[d.from_id] = True
 
             requesters = []
             for r in requests:

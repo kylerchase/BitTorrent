@@ -172,7 +172,8 @@ class chandStd(Peer):
 
 
             # Evenly "split" my upload bandwidth among the one chosen requester
-            bws = even_split(self.up_bw, len(chosen))
+            # bws = even_split(self.up_bw, len(chosen))
+            bws = map(lambda a: int(0.25*self.up_bw), chosen)
 
         # create actual uploads out of the list of peer ids and bandwidths
         uploads = [Upload(self.id, peer_id, bw)
