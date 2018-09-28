@@ -135,7 +135,7 @@ class chandStd(Peer):
             if round >= 1:
                 for d in history.downloads[round-1]:
                     recent_downloads[d.from_id] = recent_downloads[d.from_id] + d.blocks
-            elif round >= 2:
+            if round >= 2:
                 for d in history.downloads[round-2]:
                     recent_downloads[d.from_id] = recent_downloads[d.from_id] + d.blocks
 
