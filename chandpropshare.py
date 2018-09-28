@@ -52,7 +52,7 @@ class chandPropShare(Peer):
 
         logging.debug("And look, I have my entire history available too:")
         logging.debug("look at the AgentHistory class in history.py for details")
-        logging.debug(str(history))
+        # logging.debug(str(history))
 
         requests = []   # We'll put all the things we want here
         # Symmetry breaking is good...
@@ -138,10 +138,12 @@ class chandPropShare(Peer):
             for r in requests:
                 if r.requester_id not in requesters:
                     requesters.append(r.requester_id)
+            logging.info(requesters)
+            logging.info(received_last)
 
             sharing_normalizer = sum(map(lambda r: received_last[r], requesters))
-
-            if len(uploaded.keys()) == len(requesters):
+            logging.info(sharing_normalizer)
+            if set(uploaded.keys()) == set(requesters):
                 reserved = 0
             else:
                 reserved = self.optimism
@@ -154,7 +156,7 @@ class chandPropShare(Peer):
                 if received_last[r] > 0:
                     chosen.append(r)
                     bws.append(int(self.up_bw * (received_last[r]/sharing_normalizer) * (1-reserved)))
-                elif optimistic_not_chosen:
+                elif optimistic_not_chosen and reserved:
                     chosen.append(r)
                     bws.append(int(self.up_bw * reserved))
                     optimistic_not_chosen = False
