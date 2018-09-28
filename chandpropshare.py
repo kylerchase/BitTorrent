@@ -130,6 +130,7 @@ class chandPropShare(Peer):
             for p in peers:
                 received_last[p.id] = 0
 
+
             for d in history.downloads[round-1]:
                 received_last[d.from_id] += d.blocks
                 uploaded[d.from_id] = True 
@@ -161,9 +162,15 @@ class chandPropShare(Peer):
                     bws.append(int(self.up_bw * reserved))
                     optimistic_not_chosen = False
 
+            if len(chosen) == 1:
+                bws = [self.up_bw]
+
+
 
         # create actual uploads out of the list of peer ids and bandwidths
         uploads = [Upload(self.id, peer_id, bw)
                    for (peer_id, bw) in zip(chosen, bws)]
+
+
             
         return uploads

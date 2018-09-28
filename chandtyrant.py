@@ -19,7 +19,7 @@ class chandTyrant(Peer):
         self.tyrant_state = dict()
         self.tyrant_state["cycle"] = 0
         self.gamma = 0.1
-        self.alpha = 0.2
+        self.alpha = 0.1
         self.r = 3
         self.f_ji = dict()
         self.tao = dict()
@@ -126,7 +126,7 @@ class chandTyrant(Peer):
         # at the beginning, initialize all Taos to 1/4 of bandwidth
         if round == 0:
             for p in peers:
-                self.tao[p.id] = self.up_bw/4
+                self.tao[p.id] = self.up_bw*.5
                 self.unchoked[p.id] = -1 # -1 signifies they have never unchoked me
             return []
 
@@ -161,6 +161,8 @@ class chandTyrant(Peer):
                     self.tao[p.id] *= (1+self.alpha)
                     if self.unchoked[p.id] > 0:
                         self.unchoked[p.id] = 0
+                    else:
+                        self.unchoked[p.id] -= 0.5
                 elif self.unchoked[p.id] > self.r:
                     self.tao[p.id] *= (1-self.gamma)
 
@@ -175,8 +177,8 @@ class chandTyrant(Peer):
             logging.debug("Still here: uploading best ROI peers")
             # change my internal state for no reason
             for p in peers:
-                if self.unchoked[p.id] == -1:
-                    self.f_ji[p.id] = float(len(p.available_pieces) * self.conf.blocks_per_piece)/round
+                if self.unchoked[p.id] <= -1:
+                    self.f_ji[p.id] = (float(len(p.available_pieces) * self.conf.blocks_per_piece)/round)*.25
 
             # record how much each requester is requesting
             bw_requested = dict()
@@ -191,6 +193,9 @@ class chandTyrant(Peer):
             # sort requesters by ROI in descending order
             requesters.sort(reverse=True, key=lambda r: self.f_ji[r]/self.tao[r])
 
+            if self.id == "chandTyrant0":
+                print requesters
+
             
             chosen = []
             bws = []
@@ -202,10 +207,21 @@ class chandTyrant(Peer):
             j = 0
             while remaining_bw > 0 and j < len(requesters):
                 to_allocate = min(self.tao[requesters[j]], bw_requested[requesters[j]], remaining_bw)
-                chosen.append(requesters[j])
-                bws.append(to_allocate)
-                remaining_bw -= to_allocate
-                j += 1
+                # if to_allocate > remaining_bw:
+                #     remaining_bw = 0
+                if to_allocate > 0:
+                    chosen.append(requesters[j])
+                    bws.append(to_allocate)
+                    remaining_bw -= to_allocate
+                    j += 1
+
+            # optimism = 0.25
+            # bws = map(lambda a: int((1-optimism)*a), bws)
+            # print len(requesters), len(chosen)
+            # chosen.append(random.choice(requesters))
+            # bws.append(int(optimism*self.up_bw))
+
+        
 
 
         # create actual uploads out of the list of peer ids and bandwidths
